@@ -8,16 +8,11 @@ TODO: the standard simple example from MEGA
 TODO: split restriction to prevent excessive tree growth
 TODO: cuda version
 '''
-#from __future__ import print_function
 
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
-#from torch.autograd import grad
 import networkx as nx
-from cvxopt import matrix, solvers
-from Cython.Compiler.Main import verbose
-#import cvxopt
 
 
 #====== SETTINGS =============
