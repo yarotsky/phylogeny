@@ -7,7 +7,9 @@ TODO: arbitrary Nbases (currently only 0/1)
 TODO: the standard simple example from MEGA 
 TODO: split restriction to prevent excessive tree growth
 TODO: cuda version
+TODO: a better relaxation of groups of close nodes
 '''
+#from __future__ import print_function
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -598,97 +600,6 @@ def zeroGrad(G):
                 continue   
             if (node, n) in G.nodes:        
                 G.edges[(node, n)]['w'].grad.data.zero_()
-
-
-def prepareOptProblem(G, onlyC=False, minW=eps):
-    '''Prepare optimization problem for CVXopt'''
-    c = serialize(G, grad=True)      
-    c = -matrix(c)  
-    if onlyC:
-        return c
-    
-    Aopt = np.zeros((len(G.nodes)-2, len(c)))
-    b = np.zeros((len(G.nodes)-2,))  
-    
-    k = 0
-    for n in range(G.NinternalNodes):
-        k += 1        
-        for n1, species in enumerate(G.speciesNames): 
-            if (n, species) in G.edges:           
-                Aopt[n1, k] = 1.
-                b[n1] = 1.
-                k += 1
-        for n1 in range(n):
-            if (n, n1) in G.edges:
-                assert G.nodes[n1]['t'] > G.nodes[n]['t']
-                if n != 0:
-                    Aopt[G.Nspecies+n-1, k] = 1.
-                    b[G.Nspecies+n-1] = 1.
-                k += 1        
-    
-    Aopt = matrix(Aopt)    
-    b = matrix(b)
-    
-    NinternalEdges = len([(n0,n1) for (n0,n1) in G.edges if not (n0 in G.speciesNames+['out'] or n1 in G.speciesNames+['out'])])      
-    Gopt = np.zeros((2*len(c)+NinternalEdges, len(c)))
-    h = np.zeros((2*len(c)+NinternalEdges,))
-    k = 0
-    k1 = 0
-    node2k = []
-    for n in range(G.NinternalNodes):
-        node2k.append(k)
-        Gopt[2*k, k] = 1.
-        h[2*k] = 10.
-        Gopt[2*k+1, k] = -1.
-        h[2*k+1] = -eps
-        k += 1        
-        for n1 in G.speciesNames: 
-            if (n, n1) in G.edges:           
-                Gopt[2*k, k] = 1.
-                h[2*k] = 1.+eps
-                Gopt[2*k+1, k] = -1.
-                h[2*k+1] = -minW
-                k += 1
-        for n1 in range(n):
-            if (n, n1) in G.edges:
-                Gopt[2*k, k] = 1.
-                h[2*k] = 1.+eps
-                Gopt[2*k+1, k] = -1.
-                h[2*k+1] = -minW
-                
-                Gopt[2*len(c)+k1, node2k[n]] = 1.
-                Gopt[2*len(c)+k1, node2k[n1]] = -1.
-                h[2*len(c)+k1] = -eps
-                k += 1
-                k1 += 1
-         
-    assert k == len(c)
-    assert k1 == NinternalEdges
-                     
-    Gopt = matrix(Gopt)
-    h = matrix(h)
-    
-    primalstart = dict()
-    primalstart['x'] = matrix(serialize(G))
-    primalstart['s'] = h-Gopt*primalstart['x']
-     
-    return c, Aopt, b, Gopt, h, primalstart
-   
-    
-def testPrepareOptProblem():
-    speciesData, speciesNames = getSpecies(Nspecies=5, case='basic')
-    G = getGraph(speciesData, speciesNames, verbose=False) 
-    obj = getObj(G, 1)
-    obj.backward()    
-    c, Aopt, b, Gopt, h, primalstart = prepareOptProblem(G, onlyC=False)
-    print(c) 
-    print(Aopt) 
-    print(b) 
-    print(Gopt) 
-    print(h)
-    print(primalstart)
-    
-
     
 
 def split(G, 
